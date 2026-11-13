@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>記帳小幫手</title>
+<style>
+:root{
+  --bg:#f4f5f9;--card:#ffffff;--text:#1f2430;--sub:#6b7280;--line:#e3e6ee;
+  --primary:#4f6df5;--primary-d:#3a55d8;--exp:#e5484d;--inc:#1a9d6b;--chip:#eef1ff;--radius:14px;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#12141a;--card:#1b1e27;--text:#e8eaf0;--sub:#9aa1b2;--line:#2c303c;
+    --primary:#7189ff;--primary-d:#93a3ff;--exp:#ff7075;--inc:#42c796;--chip:#252b45;}
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;line-height:1.5}
+.hidden{display:none!important}
+.wrap{max-width:980px;margin:0 auto;padding:16px 14px 80px}
+header h1{margin:6px 0 2px;font-size:24px}
+header p{margin:0 0 14px;color:var(--sub);font-size:13px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px}
+.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.sum-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px}
+.sum-card span{display:block;font-size:12px;color:var(--sub)}
+.sum-card b{font-size:20px;word-break:break-all}
+.inc{color:var(--inc)}.exp{color:var(--exp)}
+.layout{display:grid;gap:14px}
+@media(min-width:880px){
+  .layout{grid-template-columns:400px 1fr;align-items:start}
+  #formCard{position:sticky;top:12px}
+}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--bg);padding:4px;border-radius:12px;margin-bottom:14px}
+.tab{border:0;background:transparent;color:var(--sub);padding:10px;border-radius:9px;font-size:15px;cursor:pointer;font-weight:600}
+.tab.active{background:var(--card);color:var(--primary);box-shadow:0 1px 4px rgba(0,0,0,.12)}
+label.f{display:block;font-size:13px;color:var(--sub);margin:0 0 4px}
+select,input[type=number],input[type=text]{
+  width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;
+  background:var(--bg);color:var(--text);font-size:16px;font-family:inherit;outline:none}
+select:focus,input:focus{border-color:var(--primary)}
+.row{margin-bottom:12px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.dateRow{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:6px}
+#fAmount{font-size:24px;font-weight:700;padding:12px}
+#fAmount.err{border-color:var(--exp)}
+.btns{display:flex;gap:8px;margin-top:6px}
+.btn{border:0;border-radius:10px;padding:12px 16px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit}
+.btn.primary{background:var(--primary);color:#fff;flex:1}
+.btn.primary:hover{background:var(--primary-d)}
+.btn.ghost{background:var(--bg);color:var(--text);border:1px solid var(--line)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.sm{padding:6px 10px;font-size:13px}
+.btn.armed{background:var(--exp);color:#fff;border-color:var(--exp)}
+.photo-panel{border:1px dashed var(--line);border-radius:12px;padding:12px;margin-bottom:14px;background:var(--bg)}
+.drop{text-align:center;padding:14px 8px;color:var(--sub);font-size:14px;border-radius:10px}
+.drop.over{background:var(--chip);color:var(--primary)}
+.drop .big{font-size:32px;display:block}
+.photo-btns{display:flex;gap:8px;margin-top:10px}
+.photo-btns .btn{flex:1}
+#photoPreview{max-width:100%;max-height:220px;display:block;margin:12px auto 8px;border-radius:10px;border:1px solid var(--line)}
+.progress{height:8px;background:var(--line);border-radius:99px;overflow:hidden}
+#progBar{height:100%;width:0;background:var(--primary);transition:width .2s}
+#ocrStatus{font-size:13px;color:var(--sub);margin:6px 0 0}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.chips p{width:100%;margin:0;font-size:12px;color:var(--sub)}
+.chip{border:1px solid transparent;background:var(--chip);color:var(--primary);padding:6px 12px;border-radius:99px;cursor:pointer;font-size:14px;font-weight:600;font-family:inherit}
+.chip.on{border-color:var(--primary)}
+details{margin-top:10px;font-size:13px;color:var(--sub)}
+details pre{white-space:pre-wrap;word-break:break-all;max-height:160px;overflow:auto;background:var(--card);padding:8px;border-radius:8px;margin:6px 0 0;color:var(--text)}
+.list-head{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.list-head h2{font-size:17px;margin:0;flex:1;min-width:90px}
+.list-head select{width:auto;padding:7px 8px;font-size:14px}
+.break{margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.break h3{font-size:13px;color:var(--sub);margin:0 0 8px;font-weight:600}
+.bar-row{display:grid;grid-template-columns:56px 1fr auto;gap:8px;align-items:center;font-size:13px;margin-bottom:5px}
+.bar{height:8px;background:var(--bg);border-radius:99px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--exp);border-radius:99px}
+.bar-row em{font-style:normal;color:var(--sub);font-size:12px}
+.day{display:flex;justify-content:space-between;font-size:12px;color:var(--sub);padding:10px 2px 4px}
+.item{display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid var(--line)}
+.item:last-child{border-bottom:0}
+.ico{width:38px;height:38px;border-radius:11px;background:var(--chip);display:flex;align-items:center;justify-content:center;font-size:19px;flex:none}
+.mid{flex:1;min-width:0}
+.mid b{display:block;font-size:15px}
+.mid small{color:var(--sub);font-size:12px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.amt{font-weight:700;font-size:16px;white-space:nowrap}
+.empty{text-align:center;color:var(--sub);padding:30px 0;font-size:14px}
+#toasts{position:fixed;left:0;right:0;bottom:18px;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;z-index:99}
+.toast{background:#222a;background:rgba(30,34,44,.95);color:#fff;padding:10px 16px;border-radius:99px;font-size:14px;box-shadow:0 4px 14px rgba(0,0,0,.3);max-width:90vw}
+.toast.bad{background:rgba(200,50,55,.96)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>💰 記帳小幫手</h1>
+    <p>手動輸入或拍照辨識金額・資料只儲存在你這台裝置的瀏覽器中</p>
+  </header>
+
+  <section class="summary">
+    <div class="sum-card"><span>收入</span><b id="sumInc" class="inc">0</b></div>
+    <div class="sum-card"><span>支出</span><b id="sumExp" class="exp">0</b></div>
+    <div class="sum-card"><span>結餘</span><b id="sumBal">0</b></div>
+  </section>
+
+  <div class="layout">
+    <!-- 新增紀錄 -->
+    <section class="card" id="formCard">
+      <div class="tabs">
+        <button type="button" class="tab active" data-mode="manual">✍️ 手動輸入</button>
+        <button type="button" class="tab" data-mode="photo">📷 拍照辨識</button>
+      </div>
+
+      <div id="photoPanel" class="photo-panel hidden">
+        <div class="drop" id="dropArea">
+          <span class="big">🧾</span>
+          拍下或選擇收據/發票照片,自動抓取金額<br>
+          <small>也可以把圖片拖曳到這裡,或直接貼上(Ctrl+V)</small>
+        </div>
+        <div class="photo-btns">
+          <button type="button" class="btn ghost" id="btnCamera">📸 拍照</button>
+          <button type="button" class="btn ghost" id="btnGallery">🖼️ 選擇圖片</button>
+        </div>
+        <input type="file" id="inCamera" accept="image/*" capture="environment" hidden>
+        <input type="file" id="inGallery" accept="image/*" hidden>
+
+        <div id="photoPreviewWrap" class="hidden">
+          <img id="photoPreview" alt="預覽">
+          <div class="progress"><div id="progBar"></div></div>
+          <p id="ocrStatus"></p>
+          <div id="candidates" class="chips hidden"></div>
+          <details id="ocrTextBox" class="hidden">
+            <summary>查看辨識出的原始文字</summary>
+            <pre id="ocrText"></pre>
+          </details>
+        </div>
+      </div>
+
+      <div class="grid2 row">
+        <div>
+          <label class="f" for="fType">收支類型</label>
+          <select id="fType">
+            <option value="expense">支出</option>
+            <option value="income">收入</option>
+          </select>
+        </div>
+        <div>
+          <label class="f" for="fPay">付款 / 入帳方式</label>
+          <select id="fPay"></select>
+        </div>
+      </div>
+
+      <div class="row">
+        <label class="f">日期</label>
+        <div class="dateRow">
+          <select id="fYear" aria-label="年"></select>
+          <select id="fMonth" aria-label="月"></select>
+          <select id="fDay" aria-label="日"></select>
+        </div>
+      </div>
+
+      <div class="grid2 row">
+        <div>
+          <label class="f" for="fCat">分類</label>
+          <select id="fCat"></select>
+        </div>
+        <div>
+          <label class="f" for="fSub">種類</label>
+          <select id="fSub"></select>
+        </div>
+      </div>
+
+      <div class="row">
+        <label class="f" for="fAmount">金額</label>
+        <input type="number" id="fAmount" inputmode="decimal" step="0.01" min="0" placeholder="0">
+      </div>
+
+      <div class="row">
+        <label class="f" for="fNote">備註(選填)</label>
+        <input type="text" id="fNote" maxlength="80" placeholder="例如:和同事聚餐">
+      </div>
+
+      <div class="btns">
+        <button type="button" class="btn primary" id="btnSave">儲存紀錄</button>
+        <button type="button" class="btn ghost" id="btnReset">清除</button>
+      </div>
+    </section>
+
+    <!-- 紀錄列表 -->
+    <section class="card">
+      <div class="list-head">
+        <h2>📒 收支紀錄</h2>
+        <select id="monthFilter" aria-label="月份篩選"></select>
+        <button type="button" class="btn ghost sm" id="btnExport">匯出 CSV</button>
+        <button type="button" class="btn ghost sm" id="btnClear">清空全部</button>
+      </div>
+      <div id="breakdown" class="break hidden"></div>
+      <div id="list"></div>
+    </section>
+  </div>
+</div>
+
+<div id="toasts" aria-live="polite"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var STORAGE_KEY = 'ledger_records_v1';
+
+  var CATS = {
+    expense: {
+      '飲食': ['早餐', '午餐', '晚餐', '飲料', '點心零食', '宵夜', '聚餐', '食材'],
+      '交通': ['捷運/公車', '計程車/叫車', '油資', '停車費', '高鐵/火車', '機票', '保養維修'],
+      '購物': ['服飾鞋包', '日用品', '3C 電子', '家具家電', '美妝保養', '禮物'],
+      '居住': ['房租', '水費', '電費', '瓦斯', '網路/電話', '管理費', '修繕'],
+      '娛樂': ['電影', '遊戲', '旅遊', '運動健身', '訂閱服務', '演唱會/活動'],
+      '醫療': ['掛號/診療', '藥品', '保健食品', '保險'],
+      '教育': ['學費', '書籍', '課程', '文具'],
+      '其他': ['手續費', '捐款', '稅金', '雜項']
+    },
+    income: {
+      '薪資': ['本薪', '加班費', '津貼', '補助'],
+      '獎金': ['年終獎金', '績效獎金', '三節獎金'],
+      '投資': ['股利', '利息', '買賣價差', '租金收入'],
+      '兼職': ['接案', '打工', '稿費'],
+      '其他': ['紅包禮金', '退款', '二手出售', '雜項']
+    }
+  };
+  var ICONS = {
+    expense: { '飲食': '🍜', '交通': '🚌', '購物': '🛍️', '居住': '🏠', '娛樂': '🎮', '醫療': '💊', '教育': '📚', '其他': '🧾' },
+    income: { '薪資': '💼', '獎金': '🎁', '投資': '📈', '兼職': '🛠️', '其他': '✨' }
+  };
+  var PAYS = ['現金', '信用卡', '簽帳金融卡', '行動支付', '電子票證', '轉帳', '其他'];
+  var WEEK = ['日', '一', '二', '三', '四', '五', '六'];
+
+  var records = [];
+  var ocrUsed = false;
+  var busy = false;
+  var lastUrl = null;
+
+  function $(id) { return document.getElementById(id); }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function fmt(n) { return Number(n).toLocaleString('zh-TW', { maximumFractionDigits: 2 }); }
+
+  /* ---------- 提示訊息(取代 alert) ---------- */
+  function toast(msg, bad) {
+    var el = document.createElement('div');
+    el.className = 'toast' + (bad ? ' bad' : '');
+    el.textContent = msg;
+    $('toasts').appendChild(el);
+    setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 2800);
+  }
+
+  /* ---------- 儲存 ---------- */
+  function load() {
+    try {
+      var r = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      records = Array.isArray(r) ? r : [];
+    } catch (e) { records = []; }
+  }
+  function persist() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(records)); }
+    catch (e) { toast('無法寫入瀏覽器儲存空間,資料可能不會保留', true); }
+  }
+
+  /* ---------- 下拉選單 ---------- */
+  function fillSelect(sel, arr, selected) {
+    sel.innerHTML = arr.map(function (v) {
+      return '<option value="' + esc(v) + '">' + esc(v) + '</option>';
+    }).join('');
+    if (selected && arr.indexOf(selected) >= 0) sel.value = selected;
+  }
+  function updateDays(keep) {
+    var y = +$('fYear').value, m = +$('fMonth').value;
+    var n = new Date(y, m, 0).getDate();
+    var cur = keep || +$('fDay').value || 1;
+    var h = '';
+    for (var i = 1; i <= n; i++) h += '<option value="' + i + '">' + i + ' 日</option>';
+    $('fDay').innerHTML = h;
+    $('fDay').value = String(Math.min(cur, n));
+  }
+  function setDate(y, m, d) {
+    var ys = $('fYear');
+    if (!ys.querySelector('option[value="' + y + '"]')) {
+      var o = document.createElement('option');
+      o.value = y; o.textContent = y + ' 年';
+      ys.appendChild(o);
+    }
+    ys.value = String(y);
+    $('fMonth').value = String(m);
+    updateDays(d);
+  }
+  function initDate() {
+    var now = new Date(), y = now.getFullYear(), h = '', i;
+    for (i = y - 10; i <= y + 1; i++) h += '<option value="' + i + '">' + i + ' 年</option>';
+    $('fYear').innerHTML = h;
+    h = '';
+    for (i = 1; i <= 12; i++) h += '<option value="' + i + '">' + i + ' 月</option>';
+    $('fMonth').innerHTML = h;
+    setDate(y, now.getMonth() + 1, now.getDate());
+  }
+  function onTypeChange() {
+    fillSelect($('fCat'), Object.keys(CATS[$('fType').value]));
+    onCatChange();
+  }
+  function onCatChange() {
+    fillSelect($('fSub'), CATS[$('fType').value][$('fCat').value] || []);
+  }
+
+  /* ---------- 儲存一筆 ---------- */
+  function save() {
+    var amt = parseFloat($('fAmount').value);
+    if (!(amt > 0)) {
+      $('fAmount').classList.add('err');
+      $('fAmount').focus();
+      toast('請輸入大於 0 的金額', true);
+      return;
+    }
+    $('fAmount').classList.remove('err');
+    var date = $('fYear').value + '-' + pad(+$('fMonth').value) + '-' + pad(+$('fDay').value);
+    var rec = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      date: date,
+      type: $('fType').value,
+      cat: $('fCat').value,
+      sub: $('fSub').value,
+      pay: $('fPay').value,
+      amount: Math.round(amt * 100) / 100,
+      note: $('fNote').value.trim(),
+      src: ocrUsed ? 'photo' : 'manual'
+    };
+    records.push(rec);
+    persist();
+    var cur = $('monthFilter').value;
+    if (cur !== 'all' && cur !== date.slice(0, 7)) $('monthFilter').dataset.force = date.slice(0, 7);
+    resetForm(true);
+    render();
+    toast('✅ 已儲存');
+  }
+  function resetForm(keepDate) {
+    $('fAmount').value = '';
+    $('fAmount').classList.remove('err');
+    $('fNote').value = '';
+    ocrUsed = false;
+    clearPhotoUI();
+    if (!keepDate) {
+      var n = new Date();
+      setDate(n.getFullYear(), n.getMonth() + 1, n.getDate());
+    }
+  }
+
+  /* ---------- 兩段式按鈕(取代 confirm) ---------- */
+  function twoStep(btn, armedText, run) {
+    if (btn.dataset.armed === '1') {
+      btn.dataset.armed = '';
+      run();
+      return;
+    }
+    var original = btn.textContent;
+    btn.dataset.armed = '1';
+    btn.textContent = armedText;
+    btn.classList.add('armed');
+    setTimeout(function () {
+      btn.dataset.armed = '';
+      btn.textContent = original;
+      btn.classList.remove('armed');
+    }, 3000);
+  }
+
+  /* ---------- 畫面 ---------- */
+  function buildMonthFilter() {
+    var sel = $('monthFilter');
+    var now = new Date();
+    var nowYm = now.getFullYear() + '-' + pad(now.getMonth() + 1);
+    var set = {};
+    set[nowYm] = true;
+    records.forEach(function (r) { set[r.date.slice(0, 7)] = true; });
+    var arr = Object.keys(set).sort().reverse();
+    var cur = sel.dataset.force || sel.value || nowYm;
+    sel.dataset.force = '';
+    sel.innerHTML = '<option value="all">全部時間</option>' + arr.map(function (m) {
+      return '<option value="' + m + '">' + m.replace('-', ' 年 ') + ' 月</option>';
+    }).join('');
+    sel.value = (cur === 'all' || set[cur]) ? cur : nowYm;
+  }
+
+  function render() {
+    buildMonthFilter();
+    var f = $('monthFilter').value;
+    var list = records.filter(function (r) { return f === 'all' || r.date.slice(0, 7) === f; });
+    list.sort(function (a, b) {
+      if (a.date !== b.date) return a.date < b.date ? 1 : -1;
+      return a.id < b.id ? 1 : -1;
+    });
+
+    var inc = 0, exp = 0, days = {}, byCat = {};
+    list.forEach(function (r) {
+      var d = days[r.date] || (days[r.date] = { inc: 0, exp: 0 });
+      if (r.type === 'income') { inc += r.amount; d.inc += r.amount; }
+      else { exp += r.amount; d.exp += r.amount; byCat[r.cat] = (byCat[r.cat] || 0) + r.amount; }
+    });
+    $('sumInc').textContent = fmt(inc);
+    $('sumExp').textContent = fmt(exp);
+    var bal = inc - exp;
+    var balEl = $('sumBal');
+    balEl.textContent = (bal > 0 ? '+' : '') + fmt(bal);
+    balEl.className = bal >= 0 ? 'inc' : 'exp';
+
+    // 支出占比
+    var bd = $('breakdown');
+    var keys = Object.keys(byCat).sort(function (a, b) { return byCat[b] - byCat[a]; });
+    if (keys.length && exp > 0) {
+      bd.classList.remove('hidden');
+      bd.innerHTML = '<h3>支出分類占比</h3>' + keys.map(function (k) {
+        var p = byCat[k] / exp * 100;
+        return '<div class="bar-row"><span>' + esc(k) + '</span><div class="bar"><i style="width:' + p.toFixed(1) +
+          '%"></i></div><em>' + fmt(byCat[k]) + '・' + p.toFixed(0) + '%</em></div>';
+      }).join('');
+    } else {
+      bd.classList.add('hidden');
+      bd.innerHTML = '';
+    }
+
+    // 明細
+    var box = $('list');
+    if (!list.length) {
+      box.innerHTML = '<div class="empty">這段期間還沒有紀錄,先新增一筆吧 ✨</div>';
+      return;
+    }
+    var html = '', last = '';
+    list.forEach(function (r) {
+      if (r.date !== last) {
+        last = r.date;
+        var p = r.date.split('-');
+        var wd = WEEK[new Date(+p[0], +p[1] - 1, +p[2]).getDay()];
+        var d = days[r.date];
+        var net = d.inc - d.exp;
+        html += '<div class="day"><span>' + r.date + '(' + wd + ')</span><span>當日 ' +
+          (net > 0 ? '+' : '') + fmt(net) + '</span></div>';
+      }
+      var ico = (ICONS[r.type] && ICONS[r.type][r.cat]) || '🧾';
+      var sub = [r.pay, r.note].filter(Boolean).join('・');
+      html += '<div class="item">' +
+        '<div class="ico">' + ico + '</div>' +
+        '<div class="mid"><b>' + esc(r.cat) + ' · ' + esc(r.sub) + (r.src === 'photo' ? ' 📷' : '') + '</b>' +
+        '<small>' + esc(sub) + '</small></div>' +
+        '<div class="amt ' + (r.type === 'income' ? 'inc' : 'exp') + '">' +
+        (r.type === 'income' ? '+' : '-') + fmt(r.amount) + '</div>' +
+        '<button type="button" class="btn ghost sm" data-del="' + esc(r.id) + '">刪除</button></div>';
+    });
+    box.innerHTML = html;
+  }
+
+  /* ---------- 匯出 CSV ---------- */
+  function exportCsv() {
+    if (!records.length) { toast('目前沒有資料可匯出', true); return; }
+    function q(v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; }
+    var rows = [['日期', '收支', '分類', '種類', '方式', '金額', '備註', '來源'].map(q).join(',')];
+    records.slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; }).forEach(function (r) {
+      rows.push([r.date, r.type === 'income' ? '收入' : '支出', r.cat, r.sub, r.pay, r.amount, r.note,
+        r.src === 'photo' ? '拍照' : '手動'].map(q).join(','));
+    });
+    var blob = new Blob(['\ufeff' + rows.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = '記帳_' + new Date().toISOString().slice(0, 10) + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    toast('已匯出 CSV');
+  }
+
+  /* ---------- 拍照 OCR ---------- */
+  function setProgress(p, text) {
+    $('progBar').style.width = Math.max(0, Math.min(100, p)) + '%';
+    if (text != null) $('ocrStatus').textContent = text;
+  }
+  function setBusy(b) {
+    ['btnCamera', 'btnGallery'].forEach(function (id) { $(id).disabled = b; });
+  }
+  function clearPhotoUI() {
+    $('photoPreviewWrap').classList.add('hidden');
+    $('candidates').classList.add('hidden');
+    $('candidates').innerHTML = '';
+    $('ocrTextBox').classList.add('hidden');
+    $('ocrText').textContent = '';
+    $('photoPreview').removeAttribute('src');
+    $('inCamera').value = '';
+    $('inGallery').value = '';
+    setProgress(0, '');
+    if (lastUrl) { URL.revokeObjectURL(lastUrl); lastUrl = null; }
+  }
+
+  function loadImage(file) {
+    return new Promise(function (res, rej) {
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function () { res({ img: img, url: url }); };
+      img.onerror = function () { URL.revokeObjectURL(url); rej(new Error('圖片讀取失敗')); };
+      img.src = url;
+    });
+  }
+
+  function preprocess(img) {
+    var w = img.naturalWidth, h = img.naturalHeight;
+    var big = Math.max(w, h), s = 1;
+    if (big > 2000) s = 2000 / big;
+    else if (big < 1000) s = Math.min(2, 1000 / big);
+    w = Math.round(w * s); h = Math.round(h * s);
+    var c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    var ctx = c.getContext('2d', { willReadFrequently: true });
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(img, 0, 0, w, h);
+    var id = ctx.getImageData(0, 0, w, h), d = id.data;
+    for (var i = 0; i < d.length; i += 4) {
+      var g = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+      g = (g - 128) * 1.35 + 128;
+      g = g < 0 ? 0 : g > 255 ? 255 : g;
+      d[i] = d[i + 1] = d[i + 2] = g;
+    }
+    ctx.putImageData(id, 0, 0);
+    return c;
+  }
+
+  var workerPromise = null;
+  function onLog(m) {
+    if (!m || !m.status) return;
+    var p = Math.round((m.progress || 0) * 100);
+    var s = String(m.status);
+    var label = '準備辨識引擎…';
+    if (s.indexOf('language') >= 0) label = '下載語言檔…(首次使用需要較久)';
+    else if (s.indexOf('recogniz') >= 0) label = '辨識文字中… ' + p + '%';
+    setProgress(p, label);
+  }
+  function getWorker() {
+    if (!workerPromise) {
+      workerPromise = Tesseract.createWorker(['chi_tra', 'eng'], 1, { logger: onLog })
+        .catch(function () { return Tesseract.createWorker('eng', 1, { logger: onLog }); })
+        .catch(function (e) { workerPromise = null; throw e; });
+    }
+    return workerPromise;
+  }
+
+  function normalize(t) {
+    return String(t)
+      .replace(/[０-９]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); })
+      .replace(/[，､]/g, ',')
+      .replace(/[．]/g, '.');
+  }
+
+  // 從文字中找出可能的金額,依可能性排序
+  function extractAmounts(raw) {
+    var lines = normalize(raw).split(/\r?\n/).map(function (s) { return s.trim(); }).filter(Boolean);
+    var STRONG = /(總\s*計|合\s*計|總\s*額|總金額|應\s*付|實\s*付|應\s*收|實\s*收|付款金額|消費金額|訂單金額|Grand\s*Total|Total|Amount\s*Due)/i;
+    var MID = /(金額|小計|Subtotal|刷卡|現金|Amount|NT\$|TWD|\$)/i;
+    var SKIP = /(統編|統一編號|電話|TEL|Phone|發票號|發票|隨機碼|卡號|序號|機號|店號|載具|點數|找零|找錢|折扣|稅額|營業稅|Change|訂單編號|單號)/i;
+    var best = {};
+    lines.forEach(function (line, idx) {
+      var strong = STRONG.test(line);
+      if (SKIP.test(line) && !strong) return;
+      var prevStrong = idx > 0 && STRONG.test(lines[idx - 1]);
+      var clean = line
+        .replace(/\d{2,4}\s*[-\/.年]\s*\d{1,2}\s*[-\/.月]\s*\d{1,2}\s*日?/g, ' ')
+        .replace(/\d{1,2}:\d{2}(:\d{2})?/g, ' ');
+      var re = /\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?/g, m;
+      while ((m = re.exec(clean))) {
+        var str = m[0].replace(/,/g, '');
+        var intPart = str.split('.')[0];
+        if (intPart.length > 7) continue;
+        if (intPart.length > 1 && intPart.charAt(0) === '0') continue;
+        var v = parseFloat(str);
+        if (!(v > 0)) continue;
+        var before = clean.charAt(m.index - 1);
+        var after = clean.charAt(m.index + m[0].length);
+        if (after === '%') continue;
+        var score = Math.log(v + 1) / Math.LN10 * 3 + (idx / lines.length) * 8;
+        if (strong) score += 100; else if (prevStrong) score += 45;
+        if (MID.test(line)) score += 30;
+        if (/[$＄]/.test(before) || /^\s*元/.test(clean.slice(m.index + m[0].length))) score += 20;
+        if (before === 'x' || before === 'X' || before === '*' || before === '×') score -= 30;
+        if (best[v] === undefined || score > best[v]) best[v] = score;
+      }
+    });
+    return Object.keys(best).map(function (k) { return { value: +k, score: best[k] }; })
+      .sort(function (a, b) { return b.score - a.score; });
+  }
+
+  function validDate(y, m, d) {
+    var ny = new Date().getFullYear();
+    if (y < 2000 || y > ny + 1 || m < 1 || m > 12 || d < 1) return null;
+    if (d > new Date(y, m, 0).getDate()) return null;
+    return { y: y, m: m, d: d };
+  }
+  function detectDate(raw) {
+    var t = normalize(raw), m;
+    m = t.match(/(20\d{2})\s*[-\/.年]\s*(\d{1,2})\s*[-\/.月]\s*(\d{1,2})/);
+    if (m) return validDate(+m[1], +m[2], +m[3]);
+    m = t.match(/(1[0-4]\d)\s*[-\/.年]\s*(\d{1,2})\s*[-\/.月]\s*(\d{1,2})/);
+    if (m) return validDate(+m[1] + 1911, +m[2], +m[3]);
+    return null;
+  }
+
+  function setAmount(v) {
+    $('fAmount').value = v;
+    $('fAmount').classList.remove('err');
+    var chips = $('candidates').querySelectorAll('.chip');
+    for (var i = 0; i < chips.length; i++) {
+      chips[i].classList.toggle('on', +chips[i].dataset.val === +v);
+    }
+  }
+
+  async function handleFile(file) {
+    if (busy || !file) return;
+    if (!file.type || file.type.indexOf('image/') !== 0) { toast('請選擇圖片檔', true); return; }
+    busy = true; setBusy(true);
+    $('photoPreviewWrap').classList.remove('hidden');
+    $('candidates').classList.add('hidden');
+    $('ocrTextBox').classList.add('hidden');
+    setProgress(2, '讀取圖片中…');
+    try {
+      var loaded = await loadImage(file);
+      if (lastUrl) URL.revokeObjectURL(lastUrl);
+      lastUrl = loaded.url;
+      $('photoPreview').src = loaded.url;
+      var canvas = preprocess(loaded.img);
+
+      if (typeof Tesseract === 'undefined') {
+        throw new Error('OCR 元件載入失敗,請確認網路連線。你仍可以手動輸入。');
+      }
+      setProgress(4, '準備辨識引擎…(首次使用需要下載語言檔)');
+      var worker = await getWorker();
+      var result = await worker.recognize(canvas);
+      var text = (result && result.data && result.data.text) || '';
+
+      $('ocrText').textContent = text.trim() || '(沒有辨識到文字)';
+      $('ocrTextBox').classList.remove('hidden');
+
+      var d = detectDate(text);
+      if (d) setDate(d.y, d.m, d.d);
+
+      var found = extractAmounts(text);
+      if (found.length) {
+        var top = found.slice(0, 6);
+        $('candidates').innerHTML = '<p>其他可能的金額(點選可改用):</p>' + top.map(function (c) {
+          return '<button type="button" class="chip" data-val="' + c.value + '">' + fmt(c.value) + '</button>';
+        }).join('');
+        $('candidates').classList.remove('hidden');
+        setAmount(found[0].value);
+        ocrUsed = true;
+        setProgress(100, '✅ 辨識完成,已填入 ' + fmt(found[0].value) + (d ? ',並偵測到日期' : '') + '。請確認後按「儲存紀錄」');
+        toast('已自動填入金額,請確認');
+      } else {
+        setProgress(100, '⚠️ 沒有找到金額,請手動輸入(可展開下方原始文字參考)');
+        toast('沒有找到金額,請手動輸入', true);
+      }
+    } catch (e) {
+      setProgress(0, '❌ ' + (e && e.message ? e.message : '辨識失敗'));
+      toast('辨識失敗,請手動輸入或換一張照片', true);
+    } finally {
+      busy = false; setBusy(false);
+    }
+  }
+
+  /* ---------- 分頁切換 ---------- */
+  function setMode(mode) {
+    var tabs = document.querySelectorAll('.tab');
+    for (var i = 0; i < tabs.length; i++) tabs[i].classList.toggle('active', tabs[i].dataset.mode === mode);
+    $('photoPanel').classList.toggle('hidden', mode !== 'photo');
+  }
+
+  /* ---------- 事件 ---------- */
+  function bind() {
+    document.querySelector('.tabs').addEventListener('click', function (e) {
+      var b = e.target.closest('.tab');
+      if (b) setMode(b.dataset.mode);
+    });
+    $('fType').addEventListener('change', onTypeChange);
+    $('fCat').addEventListener('change', onCatChange);
+    $('fYear').addEventListener('change', function () { updateDays(); });
+    $('fMonth').addEventListener('change', function () { updateDays(); });
+    $('fAmount').addEventListener('input', function () { this.classList.remove('err'); });
+    $('btnSave').addEventListener('click', save);
+    $('btnReset').addEventListener('click', function () { resetForm(false); });
+    $('fAmount').addEventListener('keydown', function (e) { if (e.key === 'Enter') save(); });
+    $('fNote').addEventListener('keydown', function (e) { if (e.key === 'Enter') save(); });
+
+    $('btnCamera').addEventListener('click', function () { $('inCamera').click(); });
+    $('btnGallery').addEventListener('click', function () { $('inGallery').click(); });
+    $('inCamera').addEventListener('change', function () { handleFile(this.files[0]); });
+    $('inGallery').addEventListener('change', function () { handleFile(this.files[0]); });
+
+    var drop = $('dropArea');
+    ['dragenter', 'dragover'].forEach(function (ev) {
+      drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('over'); });
+    });
+    ['dragleave', 'drop'].forEach(function (ev) {
+      drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove('over'); });
+    });
+    drop.addEventListener('drop', function (e) {
+      var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (f) handleFile(f);
+    });
+    document.addEventListener('paste', function (e) {
+      var items = (e.clipboardData && e.clipboardData.items) || [];
+      for (var i = 0; i < items.length; i++) {
+        if (items[i].type && items[i].type.indexOf('image/') === 0) {
+          var f = items[i].getAsFile();
+          if (f) { setMode('photo'); handleFile(f); e.preventDefault(); return; }
+        }
+      }
+    });
+    $('candidates').addEventListener('click', function (e) {
+      var c = e.target.closest('.chip');
+      if (c) { setAmount(+c.dataset.val); ocrUsed = true; }
+    });
+
+    $('monthFilter').addEventListener('change', render);
+    $('btnExport').addEventListener('click', exportCsv);
+    $('btnClear').addEventListener('click', function () {
+      var btn = this;
+      if (!records.length) { toast('目前沒有資料', true); return; }
+      twoStep(btn, '再按一次確定清空', function () {
+        records = [];
+        persist();
+        btn.textContent = '清空全部';
+        btn.classList.remove('armed');
+        render();
+        toast('已清空所有紀錄');
+      });
+    });
+    $('list').addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-del]');
+      if (!btn) return;
+      var id = btn.dataset.del;
+      twoStep(btn, '確定刪除?', function () {
+        records = records.filter(function (r) { return r.id !== id; });
+        persist();
+        render();
+        toast('已刪除');
+      });
+    });
+  }
+
+  /* ---------- 啟動 ---------- */
+  function init() {
+    fillSelect($('fPay'), PAYS);
+    initDate();
+    onTypeChange();
+    load();
+    bind();
+    render();
+  }
+  init();
+})();
+</script>
+</body>
+</html>
